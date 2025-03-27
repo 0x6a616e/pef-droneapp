@@ -23,9 +23,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        findViewById(R.id.btn_waypoint1).setOnClickListener(clickListener);
-        findViewById(R.id.btn_waypoint2).setOnClickListener(clickListener);
+        startActivity(MainActivity.this, Waypoint1Activity.class);
     }
 
     public static void startActivity(Context context, Class activity) {
