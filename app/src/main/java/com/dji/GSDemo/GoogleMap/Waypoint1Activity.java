@@ -52,12 +52,20 @@ import dji.common.error.DJIError;
 import dji.sdk.mission.waypoint.WaypointMissionOperator;
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener;
 import dji.sdk.products.Aircraft;
+import dji.sdk.remotecontroller.L;
 import dji.sdk.sdkmanager.DJISDKManager;
 import dji.sdk.useraccount.UserAccountManager;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, OnMapReadyCallback {
 
     protected static final String TAG = "GSDemoActivity";
+
+    protected static final String BASE_URL = "https://api.pef.estupideznatural.tech/";
 
     private GoogleMap gMap;
 
@@ -162,7 +170,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         mapFragment.getMapAsync(this);
 
         addListener();
-
     }
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -277,16 +284,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             markWaypoint(point);
             Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
             //Add Waypoints to Waypoint arraylist;
-            if (waypointMissionBuilder != null) {
-                waypointList.add(mWaypoint);
-                waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
-            }else
-            {
+            if (waypointMissionBuilder == null) {
                 waypointMissionBuilder = new WaypointMission.Builder();
-                waypointList.add(mWaypoint);
-                waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
             }
-        }else{
+            waypointList.add(mWaypoint);
+            waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+        }else {
             setResultToToast("Cannot Add Waypoint");
         }
     }
@@ -335,8 +338,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 cameraUpdate(); // Locate the drone's place
                 break;
             }
-            case R.id.add:{
-                enableDisableAdd();
+            case R.id.request: {
+                requestMission();
+                break;
+            }
+            case R.id.edit:{
+                enableDisableEdit();
                 break;
             }
             case R.id.clear:{
@@ -381,13 +388,51 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     }
 
-    private void enableDisableAdd(){
+    private void addPoint(LatLng point) {
+        markWaypoint(point);
+        Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
+        if (waypointMissionBuilder == null) {
+            waypointMissionBuilder = new WaypointMission.Builder();
+        }
+        waypointList.add(mWaypoint);
+        waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+    }
+
+    private void requestMission() {
+        setResultToToast("Solicitando misión al servidor.");
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        Call<Mission> call = routesAPI.getMission();
+        call.enqueue(new Callback<Mission>() {
+            @Override
+            public void onResponse(Call<Mission> call, Response<Mission> response) {
+                Mission mission = response.body();
+                assert mission != null;
+                Waypoint mWaypoint;
+                for (LatLng p : mission.getWaypoints()) {
+                    addPoint(p);
+                }
+                configWayPointMission();
+                uploadWayPointMission();
+            }
+
+            @Override
+            public void onFailure(Call<Mission> call, Throwable t) {
+                setResultToToast("Fallo en la solicitud al servidor.");
+            }
+        });
+    }
+
+    private void enableDisableEdit(){
         if (isEdit == false) {
             isEdit = true;
-            edit.setText("Exit");
+            edit.setText("Listo");
         }else{
             isEdit = false;
-            edit.setText("Add");
+            edit.setText("Editar");
         }
     }
 
