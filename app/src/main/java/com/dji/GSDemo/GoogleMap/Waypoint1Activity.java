@@ -61,7 +61,7 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, OnMapReadyCallback {
+public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener, OnMapReadyCallback {
 
     protected static final String TAG = "GSDemoActivity";
 
@@ -275,23 +275,32 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     private void setUpMap() {
         gMap.setOnMapClickListener(this);// add the listener for click for amap object
+        gMap.setOnMarkerClickListener(this);
 
     }
 
     @Override
     public void onMapClick(LatLng point) {
-        if (isEdit == true){
-            markWaypoint(point);
-            Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
-            //Add Waypoints to Waypoint arraylist;
-            if (waypointMissionBuilder == null) {
-                waypointMissionBuilder = new WaypointMission.Builder();
-            }
-            waypointList.add(mWaypoint);
-            waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
-        }else {
-            setResultToToast("Cannot Add Waypoint");
+        if (isEdit){
+            addPoint(point);
         }
+    }
+
+    @Override
+    public boolean onMarkerClick(Marker marker) {
+        if (marker != droneMarker) {
+            marker.remove();
+            List<Waypoint> toKeep = new ArrayList<>();
+            for (Waypoint waypoint : waypointList) {
+                if (waypoint.coordinate.getLatitude() != marker.getPosition().latitude ||
+                        waypoint.coordinate.getLongitude() != marker.getPosition().longitude) {
+                    toKeep.add(waypoint);
+                }
+            }
+            waypointList.retainAll(toKeep);
+            waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+        }
+        return true;
     }
 
     public static boolean checkGpsCoordination(double latitude, double longitude) {
@@ -327,7 +336,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         markerOptions.position(point);
         markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
         Marker marker = gMap.addMarker(markerOptions);
-        mMarkers.put(mMarkers.size(), marker);
+        // mMarkers.put(mMarkers.size(), marker);
     }
 
     @Override
@@ -426,12 +435,58 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         });
     }
 
+    private void optimizeMission() {
+        LatLng start = new LatLng(droneLocationLat, droneLocationLng);
+        List<LatLng> waypoints = new ArrayList<>();
+        for (Waypoint w : waypointList) {
+            waypoints.add(new LatLng(w.coordinate.getLatitude(), w.coordinate.getLongitude()));
+        }
+        Mission mission = new Mission(start, waypoints);
+        setResultToToast("Optimizando ruta");
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        Call<Mission> call = routesAPI.postMission(mission);
+        call.enqueue(new Callback<Mission>() {
+            @Override
+            public void onResponse(Call<Mission> call, Response<Mission> response) {
+                Mission optimizedMission = response.body();
+                assert optimizedMission != null;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        gMap.clear();
+                    }
+
+                });
+                waypointList.clear();
+                waypointMissionBuilder.waypointList(waypointList);
+                updateDroneLocation();
+                for (LatLng p : optimizedMission.getWaypoints()) {
+                    addPoint(p);
+                }
+                configWayPointMission();
+                uploadWayPointMission();
+            }
+
+            @Override
+            public void onFailure(Call<Mission> call, Throwable t) {
+                setResultToToast("Fallo en la solicitud al servidor.");
+            }
+        });
+    }
+
     private void enableDisableEdit(){
         if (isEdit == false) {
             isEdit = true;
             edit.setText("Listo");
-        }else{
+        } else {
             isEdit = false;
+            optimizeMission();
+            configWayPointMission();
+            uploadWayPointMission();
             edit.setText("Editar");
         }
     }
