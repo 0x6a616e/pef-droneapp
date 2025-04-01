@@ -87,7 +87,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private FlightController mFlightController;
     private WaypointMissionOperator instance;
     private WaypointMissionFinishedAction mFinishedAction = WaypointMissionFinishedAction.GO_HOME;
-    private WaypointMissionHeadingMode mHeadingMode = WaypointMissionHeadingMode.AUTO;
+    private WaypointMissionHeadingMode mHeadingMode = WaypointMissionHeadingMode.USING_WAYPOINT_HEADING;
 
     @Override
     protected void onResume(){
@@ -261,6 +261,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
         @Override
         public void onExecutionFinish(@Nullable final DJIError error) {
+            start.setText("Iniciar");
+            isStop = false;
             setResultToToast("Execution finished: " + (error == null ? "Success!" : error.getDescription()));
         }
     };
@@ -337,7 +339,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         markerOptions.position(point);
         markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
         Marker marker = gMap.addMarker(markerOptions);
-        // mMarkers.put(mMarkers.size(), marker);
+        mMarkers.put(mMarkers.size(), marker);
     }
 
     private void enableDisableStop() {
@@ -412,6 +414,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private void addPoint(LatLng point) {
         markWaypoint(point);
         Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
+        mWaypoint.heading = 0;
         if (waypointMissionBuilder == null) {
             waypointMissionBuilder = new WaypointMission.Builder();
         }
