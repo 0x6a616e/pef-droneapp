@@ -72,6 +72,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private Button locate, request, edit, start;
 
     private boolean isEdit = false;
+    private boolean isStop = false;
 
     private double droneLocationLat = 181, droneLocationLng = 181;
     private final Map<Integer, Marker> mMarkers = new ConcurrentHashMap<Integer, Marker>();
@@ -339,6 +340,17 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         // mMarkers.put(mMarkers.size(), marker);
     }
 
+    private void enableDisableStop() {
+        if (isStop) {
+            start.setText("Iniciar");
+            stopWaypointMission();
+        } else {
+            start.setText("Detener");
+            startWaypointMission();
+        }
+        isStop = !isStop;
+    }
+
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
@@ -377,7 +389,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 break;
             }
             case R.id.start:{
-                startWaypointMission();
+                enableDisableStop();
                 break;
             }
             case R.id.stop:{
