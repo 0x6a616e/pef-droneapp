@@ -11,6 +11,12 @@ import android.os.Build;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
+import androidx.work.WorkRequest;
+
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -29,13 +35,29 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 
+import javax.xml.transform.Result;
+
+import dji.common.camera.SettingsDefinitions;
+import dji.common.error.DJICameraError;
 import dji.common.flightcontroller.FlightControllerState;
+import dji.common.gimbal.Rotation;
+import dji.common.gimbal.RotationMode;
 import dji.common.mission.waypoint.Waypoint;
 import dji.common.mission.waypoint.WaypointMission;
 import dji.common.mission.waypoint.WaypointMissionDownloadEvent;
@@ -47,21 +69,28 @@ import dji.common.mission.waypoint.WaypointMissionUploadEvent;
 import dji.common.useraccount.UserAccountState;
 import dji.common.util.CommonCallbacks;
 import dji.sdk.base.BaseProduct;
+import dji.sdk.camera.Camera;
 import dji.sdk.flightcontroller.FlightController;
 import dji.common.error.DJIError;
+import dji.sdk.gimbal.Gimbal;
+import dji.sdk.media.DownloadListener;
+import dji.sdk.media.MediaFile;
+import dji.sdk.media.MediaManager;
 import dji.sdk.mission.waypoint.WaypointMissionOperator;
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener;
 import dji.sdk.products.Aircraft;
-import dji.sdk.remotecontroller.L;
 import dji.sdk.sdkmanager.DJISDKManager;
 import dji.sdk.useraccount.UserAccountManager;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener, OnMapReadyCallback {
+public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, GoogleMap.OnMarkerClickListener, OnMapReadyCallback, MediaManager.FileListStateListener {
 
     protected static final String TAG = "GSDemoActivity";
 
@@ -81,10 +110,19 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private float altitude = 10.0f;
     private float mSpeed = 5.0f;
 
+    private float FOV = 78.8f;
+
+    private float photoWaitDistance = calcPhotoWaitDistance(FOV, altitude);
+
     private List<Waypoint> waypointList = new ArrayList<>();
 
     public static WaypointMission.Builder waypointMissionBuilder;
     private FlightController mFlightController;
+    private Camera mCamera;
+    private Gimbal mGimbal;
+    private MediaManager mMediaManager;
+    private List<MediaFile> mFiles = new ArrayList<>();
+    private int pending;
     private WaypointMissionOperator instance;
     private WaypointMissionFinishedAction mFinishedAction = WaypointMissionFinishedAction.GO_HOME;
     private WaypointMissionHeadingMode mHeadingMode = WaypointMissionHeadingMode.USING_WAYPOINT_HEADING;
@@ -92,7 +130,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     @Override
     protected void onResume(){
         super.onResume();
-        initFlightController();
+        initFlightComponents();
     }
 
     @Override
@@ -122,6 +160,10 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 Toast.makeText(Waypoint1Activity.this, string, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private float calcPhotoWaitDistance(float FOV, float altitude) {
+        return (float) (Math.tan(Math.toRadians(FOV / 2)) * altitude * 2);
     }
 
     private void initUI() {
@@ -183,7 +225,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     private void onProductConnectionChange()
     {
-        initFlightController();
+        initFlightComponents();
+        setupGimbal();
         loginAccount();
     }
 
@@ -203,12 +246,20 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 });
     }
 
-    private void initFlightController() {
+    private void initFlightComponents() {
 
         BaseProduct product = DJIDemoApplication.getProductInstance();
         if (product != null && product.isConnected()) {
             if (product instanceof Aircraft) {
                 mFlightController = ((Aircraft) product).getFlightController();
+            }
+            mGimbal = product.getGimbal();
+            setupGimbal();
+            mCamera = product.getCamera();
+            mMediaManager = mCamera.getMediaManager();
+            mMediaManager.addUpdateStorageLocationListener(SettingsDefinitions.StorageLocation.SDCARD, this);
+            if (waypointMissionBuilder == null) {
+                waypointMissionBuilder = new WaypointMission.Builder();
             }
         }
 
@@ -223,6 +274,15 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 }
             });
         }
+    }
+
+    private void setupGimbal() {
+        Rotation rotationPitch = new Rotation.Builder()
+                .mode(RotationMode.ABSOLUTE_ANGLE)
+                .pitch(-90f)
+                .time(1)
+                .build();
+        mGimbal.rotate(rotationPitch, null);
     }
 
     //Add Listener for WaypointMissionOperator
@@ -251,21 +311,136 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
         @Override
         public void onExecutionUpdate(WaypointMissionExecutionEvent executionEvent) {
-
         }
 
         @Override
         public void onExecutionStart() {
-
+            mCamera.setMode(SettingsDefinitions.CameraMode.SHOOT_PHOTO, null);
         }
 
         @Override
         public void onExecutionFinish(@Nullable final DJIError error) {
             start.setText("Iniciar");
             isStop = false;
-            setResultToToast("Execution finished: " + (error == null ? "Success!" : error.getDescription()));
+            mCamera.setMode(SettingsDefinitions.CameraMode.MEDIA_DOWNLOAD, null);
+            uploadPictures();
         }
     };
+
+    private void deleteFiles(List<MediaFile> files) {
+        setResultToToast("Cleaning files");
+        mMediaManager.deleteFiles(files, new CommonCallbacks.CompletionCallbackWithTwoParam<List<MediaFile>, DJICameraError>() {
+            @Override
+            public void onSuccess(List<MediaFile> mediaFiles, DJICameraError djiCameraError) {
+                if (djiCameraError != null) {
+                    setResultToToast("Delete 1 error: " + djiCameraError.getDescription());
+                }
+            }
+
+            @Override
+            public void onFailure(DJIError djiError) {
+                if (djiError != null) {
+                    setResultToToast("Delete 2 error: " + djiError.getDescription());
+                }
+
+            }
+        });
+        mFiles.clear();
+    }
+
+    private void processFiles(List<MediaFile> files, List<MediaFile> origFiles) {
+        String[] filenames = new String[ files.size() ];
+        for (int i = 0; i < files.size(); ++i) {
+            filenames[i] = files.get(i).getFileName();
+        }
+        WorkRequest uploadWorkRequest = new OneTimeWorkRequest.Builder(UploadWorker.class)
+                .setInputData(
+                        new Data.Builder()
+                                .putStringArray("FILENAMES", filenames)
+                                .build()
+                )
+                .build();
+        WorkManager.getInstance(this).enqueue(uploadWorkRequest);
+        ListenableFuture<WorkInfo> future = WorkManager.getInstance(this).getWorkInfoById(uploadWorkRequest.getId());
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Futures.addCallback(
+                    future,
+                    new FutureCallback<WorkInfo>() {
+                        @Override
+                        public void onSuccess(WorkInfo result) {
+                            deleteFiles(origFiles);
+                        }
+
+                        @Override
+                        public void onFailure(Throwable t) {
+                        }
+                    },
+                    getApplicationContext().getMainExecutor()
+            );
+        }
+    }
+
+    public void onFileListStateChange(MediaManager.FileListState state) {
+        if (state != MediaManager.FileListState.UP_TO_DATE) {
+            return;
+        }
+        List<MediaFile> files = mMediaManager.getSDCardFileListSnapshot();
+        assert files != null;
+        setResultToToast("Files: " + files.size());
+        mFiles.clear();
+        File dir = getFilesDir();
+        pending = files.size();
+        for (MediaFile file : files) {
+            file.fetchFileData(dir, null, new DownloadListener<String>() {
+                @Override
+                public void onStart() {
+                }
+
+                @Override
+                public void onRateUpdate(long l, long l1, long l2) {
+                }
+
+                @Override
+                public void onRealtimeDataUpdate(byte[] bytes, long l, boolean b) {
+                }
+
+                @Override
+                public void onProgress(long l, long l1) {
+                }
+
+                @Override
+                public void onSuccess(String s) {
+                    --pending;
+                    setResultToToast("Pending: " + pending);
+                    mFiles.add(file);
+                    if (pending <= 0) {
+                        processFiles(mFiles, files);
+                    }
+                }
+
+                @Override
+                public void onFailure(DJIError djiError) {
+                    --pending;
+                    setResultToToast("Pending: " + pending);
+                    if (pending <= 0) {
+                        processFiles(mFiles, files);
+                    }
+                }
+            });
+        }
+    }
+
+    private void uploadPictures() {
+        setResultToToast("Subiendo imagenes");
+        mMediaManager.refreshFileListOfStorageLocation(SettingsDefinitions.StorageLocation.SDCARD, new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                if (djiError != null) {
+                    setResultToToast("Refresh error: " + djiError.getDescription());
+                }
+            }
+        });
+    }
 
     public WaypointMissionOperator getWaypointMissionOperator() {
         if (instance == null) {
@@ -414,7 +589,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private void addPoint(LatLng point) {
         markWaypoint(point);
         Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
-        mWaypoint.heading = 0;
         if (waypointMissionBuilder == null) {
             waypointMissionBuilder = new WaypointMission.Builder();
         }
@@ -435,7 +609,16 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             public void onResponse(Call<Mission> call, Response<Mission> response) {
                 Mission mission = response.body();
                 assert mission != null;
-                Waypoint mWaypoint;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        gMap.clear();
+                    }
+
+                });
+                waypointList.clear();
+                waypointMissionBuilder.waypointList(waypointList);
+                updateDroneLocation();
                 for (LatLng p : mission.getWaypoints()) {
                     addPoint(p);
                 }
@@ -621,16 +804,15 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     .autoFlightSpeed(mSpeed)
                     .maxFlightSpeed(mSpeed)
                     .flightPathMode(WaypointMissionFlightPathMode.NORMAL);
-
         }
 
         if (waypointMissionBuilder.getWaypointList().size() > 0){
 
             for (int i=0; i< waypointMissionBuilder.getWaypointList().size(); i++){
                 waypointMissionBuilder.getWaypointList().get(i).altitude = altitude;
+                waypointMissionBuilder.getWaypointList().get(i).heading = 0;
+                waypointMissionBuilder.getWaypointList().get(i).shootPhotoDistanceInterval = photoWaitDistance;
             }
-
-            setResultToToast("Set Waypoint attitude successfully");
         }
 
         DJIError error = getWaypointMissionOperator().loadMission(waypointMissionBuilder.build());
