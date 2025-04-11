@@ -18,6 +18,8 @@ import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -361,23 +363,13 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 )
                 .build();
         WorkManager.getInstance(this).enqueue(uploadWorkRequest);
-        ListenableFuture<WorkInfo> future = WorkManager.getInstance(this).getWorkInfoById(uploadWorkRequest.getId());
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            Futures.addCallback(
-                    future,
-                    new FutureCallback<WorkInfo>() {
-                        @Override
-                        public void onSuccess(WorkInfo result) {
-                            deleteFiles(origFiles);
-                        }
-
-                        @Override
-                        public void onFailure(Throwable t) {
-                        }
-                    },
-                    getApplicationContext().getMainExecutor()
-            );
-        }
+        WorkManager.getInstance(this).getWorkInfoByIdLiveData(uploadWorkRequest.getId())
+                .observe(this, workInfo -> {
+                    if (workInfo.getState() == WorkInfo.State.SUCCEEDED) {
+                        deleteFiles(origFiles);
+                        processMission();
+                    }
+                });
     }
 
     public void onFileListStateChange(MediaManager.FileListState state) {
@@ -414,7 +406,13 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     setResultToToast("Pending: " + pending);
                     mFiles.add(file);
                     if (pending <= 0) {
-                        processFiles(mFiles, files);
+                        Handler handler = new Handler(Looper.getMainLooper());
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                processFiles(mFiles, files);
+                            }
+                        });
                     }
                 }
 
@@ -423,7 +421,13 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     --pending;
                     setResultToToast("Pending: " + pending);
                     if (pending <= 0) {
-                        processFiles(mFiles, files);
+                        Handler handler = new Handler(Looper.getMainLooper());
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                processFiles(mFiles, files);
+                            }
+                        });
                     }
                 }
             });
@@ -594,6 +598,43 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         }
         waypointList.add(mWaypoint);
         waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
+    }
+
+    private void processMission() {
+        setResultToToast("Solicitando misión al servidor.");
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        Call<Mission> call = routesAPI.process();
+        call.enqueue(new Callback<Mission>() {
+            @Override
+            public void onResponse(Call<Mission> call, Response<Mission> response) {
+                Mission mission = response.body();
+                assert mission != null;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        gMap.clear();
+                    }
+
+                });
+                waypointList.clear();
+                waypointMissionBuilder.waypointList(waypointList);
+                updateDroneLocation();
+                for (LatLng p : mission.getWaypoints()) {
+                    addPoint(p);
+                }
+                configWayPointMission();
+                uploadWayPointMission();
+            }
+
+            @Override
+            public void onFailure(Call<Mission> call, Throwable t) {
+                setResultToToast("Fallo en la solicitud al servidor.");
+            }
+        });
     }
 
     private void requestMission() {

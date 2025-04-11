@@ -13,10 +13,13 @@ public interface RoutesAPI {
     @GET("routes/get")
     Call<Mission> getMission();
 
+    @GET("routes/process")
+    Call<Mission> process();
+
     @POST("routes/edit")
     Call<Mission> postMission(@Body Mission mission);
 
     @Multipart
-    @POST("routes/uploadfile")
-    Call<Void> uploadFile(@Query("lat") Double latitude, @Query("lng") Double longitude, @Part MultipartBody.Part filePart);
+    @POST("routes/uploadfile/drone")
+    Call<Void> uploadFile(@Part MultipartBody.Part filePart);
 }

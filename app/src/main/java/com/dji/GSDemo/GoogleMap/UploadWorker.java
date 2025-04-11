@@ -46,35 +46,24 @@ public class UploadWorker extends Worker {
         RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
         for (String filename : filenames) {
             File file = new File(dir, filename);
-            double lat = 0.0;
-            double lng = 0.0;
+            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), RequestBody.create(MediaType.parse("image/*"), file));
+            Call<Void> call = routesAPI.uploadFile(filePart);
             try {
-                Metadata metadata = ImageMetadataReader.readMetadata(file);
-                GpsDirectory gpsDirectory = metadata.getFirstDirectoryOfType(GpsDirectory.class);
-                if (gpsDirectory != null) {
-                    GeoLocation location = gpsDirectory.getGeoLocation();
-                    if (location != null) {
-                        lat = location.getLatitude();
-                        lng = location.getLongitude();
-                    }
-                }
-            } catch (ImageProcessingException e) {
-                throw new RuntimeException(e);
+                Response<Void> response = call.execute();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), RequestBody.create(MediaType.parse("image/*"), file));
-            Call<Void> call = routesAPI.uploadFile(lat, lng, filePart);
-            call.enqueue(new Callback<Void>() {
-                @Override
-                public void onResponse(Call<Void> call, Response<Void> response) {
-                    file.delete();
-                }
+            file.delete();
+            // call.enqueue(new Callback<Void>() {
+            //     @Override
+            //     public void onResponse(Call<Void> call, Response<Void> response) {
+            //         file.delete();
+            //     }
 
-                @Override
-                public void onFailure(Call<Void> call, Throwable t) {
-                }
-            });
+            //     @Override
+            //     public void onFailure(Call<Void> call, Throwable t) {
+            //     }
+            // });
         }
         return Result.success();
     }
