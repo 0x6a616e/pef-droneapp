@@ -229,6 +229,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     {
         initFlightComponents();
         setupGimbal();
+        setupCamera();
         loginAccount();
     }
 
@@ -256,7 +257,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 mFlightController = ((Aircraft) product).getFlightController();
             }
             mGimbal = product.getGimbal();
-            setupGimbal();
             mCamera = product.getCamera();
             mMediaManager = mCamera.getMediaManager();
             mMediaManager.addUpdateStorageLocationListener(SettingsDefinitions.StorageLocation.SDCARD, this);
@@ -285,6 +285,17 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 .time(1)
                 .build();
         mGimbal.rotate(rotationPitch, null);
+    }
+
+    private void setupCamera() {
+        mCamera.setFocusMode(SettingsDefinitions.FocusMode.AFC, new CommonCallbacks.CompletionCallback() {
+            @Override
+            public void onResult(DJIError djiError) {
+                if (djiError != null) {
+                    setResultToToast("Error Camera: " + djiError.getDescription());
+                }
+            }
+        });
     }
 
     //Add Listener for WaypointMissionOperator
