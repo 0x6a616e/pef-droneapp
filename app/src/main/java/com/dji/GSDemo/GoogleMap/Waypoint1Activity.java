@@ -632,7 +632,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
                 });
                 waypointList.clear();
-                waypointMissionBuilder.waypointList(waypointList);
                 updateDroneLocation();
                 for (LatLng p : mission.getWaypoints()) {
                     addPoint(p);
@@ -669,7 +668,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
                 });
                 waypointList.clear();
-                waypointMissionBuilder.waypointList(waypointList);
                 updateDroneLocation();
                 for (LatLng p : mission.getWaypoints()) {
                     addPoint(p);
@@ -712,7 +710,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
                 });
                 waypointList.clear();
-                waypointMissionBuilder.waypointList(waypointList);
                 updateDroneLocation();
                 for (LatLng p : optimizedMission.getWaypoints()) {
                     addPoint(p);
@@ -918,10 +915,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             gMap = googleMap;
             setUpMap();
         }
-
-        LatLng shenzhen = new LatLng(22.5362, 113.9454);
-        gMap.addMarker(new MarkerOptions().position(shenzhen).title("Marker in Shenzhen"));
-        gMap.moveCamera(CameraUpdateFactory.newLatLng(shenzhen));
     }
 
 }

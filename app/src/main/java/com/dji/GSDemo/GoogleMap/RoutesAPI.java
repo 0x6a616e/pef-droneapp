@@ -10,16 +10,16 @@ import retrofit2.http.Part;
 import retrofit2.http.Query;
 
 public interface RoutesAPI {
-    @GET("routes/get")
+    @GET("missions/get")
     Call<Mission> getMission();
 
-    @GET("routes/process")
+    @GET("missions/process")
     Call<Mission> process();
 
-    @POST("routes/edit")
+    @POST("missions/edit")
     Call<Mission> postMission(@Body Mission mission);
 
     @Multipart
-    @POST("routes/uploadfile/drone")
+    @POST("missions/uploadfile/drone")
     Call<Void> uploadFile(@Part MultipartBody.Part filePart);
 }
