@@ -81,6 +81,7 @@ import dji.sdk.media.MediaManager;
 import dji.sdk.mission.waypoint.WaypointMissionOperator;
 import dji.sdk.mission.waypoint.WaypointMissionOperatorListener;
 import dji.sdk.products.Aircraft;
+import dji.sdk.remotecontroller.L;
 import dji.sdk.sdkmanager.DJISDKManager;
 import dji.sdk.useraccount.UserAccountManager;
 import okhttp3.MediaType;
@@ -215,6 +216,11 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         mapFragment.getMapAsync(this);
 
         addListener();
+
+        initFlightComponents();
+        setupGimbal();
+        setupCamera();
+        initializeMission();
     }
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -230,6 +236,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         initFlightComponents();
         setupGimbal();
         setupCamera();
+        initializeMission();
         loginAccount();
     }
 
@@ -294,6 +301,26 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 if (djiError != null) {
                     setResultToToast("Error Camera: " + djiError.getDescription());
                 }
+            }
+        });
+    }
+
+    private void initializeMission() {
+        setResultToToast("Iniciando misión.");
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        LatLng latLng = new LatLng(droneLocationLat, droneLocationLng);
+        Call<Void> call = routesAPI.initialize(latLng);
+        call.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
             }
         });
     }

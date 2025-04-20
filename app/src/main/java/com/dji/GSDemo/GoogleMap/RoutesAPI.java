@@ -1,5 +1,7 @@
 package com.dji.GSDemo.GoogleMap;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -10,6 +12,9 @@ import retrofit2.http.Part;
 import retrofit2.http.Query;
 
 public interface RoutesAPI {
+    @POST("missions/initialize")
+    Call<Void> initialize(@Body LatLng latLng);
+
     @GET("missions/get")
     Call<Mission> getMission();
 
