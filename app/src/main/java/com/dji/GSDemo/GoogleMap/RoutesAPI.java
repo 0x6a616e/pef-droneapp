@@ -24,6 +24,9 @@ public interface RoutesAPI {
     @POST("missions/edit")
     Call<Mission> postMission(@Body Mission mission);
 
+    @POST("missions/area")
+    Call<Mission> postArea(@Body Mission mission);
+
     @Multipart
     @POST("missions/uploadfile/drone")
     Call<Void> uploadFile(@Part MultipartBody.Part filePart);

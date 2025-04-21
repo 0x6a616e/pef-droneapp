@@ -117,6 +117,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     private float photoWaitDistance = calcPhotoWaitDistance(FOV, altitude);
 
+    private boolean firstTravel = true;
+
     private List<Waypoint> waypointList = new ArrayList<>();
 
     public static WaypointMission.Builder waypointMissionBuilder;
@@ -586,27 +588,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 enableDisableEdit();
                 break;
             }
-            case R.id.clear:{
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        gMap.clear();
-                    }
-
-                });
-                waypointList.clear();
-                waypointMissionBuilder.waypointList(waypointList);
-                updateDroneLocation();
-                break;
-            }
-            case R.id.config:{
-                showSettingDialog();
-                break;
-            }
-            case R.id.upload:{
-                uploadWayPointMission();
-                break;
-            }
             case R.id.start:{
                 enableDisableStop();
                 break;
@@ -752,15 +733,60 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         });
     }
 
+    private void optimizeArea() {
+        LatLng start = new LatLng(droneLocationLat, droneLocationLng);
+        List<LatLng> waypoints = new ArrayList<>();
+        for (Waypoint w : waypointList) {
+            waypoints.add(new LatLng(w.coordinate.getLatitude(), w.coordinate.getLongitude()));
+        }
+        Mission mission = new Mission(start, waypoints);
+        setResultToToast("Optimizando área");
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        Call<Mission> call = routesAPI.postArea(mission);
+        call.enqueue(new Callback<Mission>() {
+            @Override
+            public void onResponse(Call<Mission> call, Response<Mission> response) {
+                Mission optimizedMission = response.body();
+                assert optimizedMission != null;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        gMap.clear();
+                    }
+
+                });
+                waypointList.clear();
+                updateDroneLocation();
+                for (LatLng p : optimizedMission.getWaypoints()) {
+                    addPoint(p);
+                }
+                configWayPointMission();
+                uploadWayPointMission();
+            }
+
+            @Override
+            public void onFailure(Call<Mission> call, Throwable t) {
+                setResultToToast("Fallo en la solicitud al servidor.");
+            }
+        });
+        firstTravel = false;
+    }
+
     private void enableDisableEdit(){
         if (isEdit == false) {
             isEdit = true;
             edit.setText("Listo");
         } else {
             isEdit = false;
-            optimizeMission();
-            configWayPointMission();
-            uploadWayPointMission();
+            if (firstTravel) {
+                optimizeArea();
+            } else {
+                optimizeMission();
+            }
             edit.setText("Editar");
         }
     }

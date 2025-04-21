@@ -9,17 +9,6 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    private View.OnClickListener clickListener = v -> {
-        switch (v.getId()) {
-            case R.id.btn_waypoint1:
-                startActivity(MainActivity.this, Waypoint1Activity.class);
-                break;
-            case R.id.btn_waypoint2:
-                startActivity(MainActivity.this, Waypoint2Activity.class);
-                break;
-        }
-    };
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
