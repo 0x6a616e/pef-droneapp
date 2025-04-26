@@ -23,6 +23,12 @@
             android:text="Solicitar"
             android:layout_weight="1"/>
         <Button
+            android:id="@+id/params"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Editar umbral"
+            android:layout_weight="1"/>
+        <Button
             android:id="@+id/edit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

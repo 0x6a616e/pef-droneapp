@@ -23,8 +23,11 @@ import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,6 +49,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -101,7 +105,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     private GoogleMap gMap;
 
-    private Button locate, request, edit, start;
+    private Button locate, request, edit, start, edit_umbral;
 
     private boolean isEdit = false;
     private boolean isStop = false;
@@ -131,6 +135,9 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private WaypointMissionOperator instance;
     private WaypointMissionFinishedAction mFinishedAction = WaypointMissionFinishedAction.GO_HOME;
     private WaypointMissionHeadingMode mHeadingMode = WaypointMissionHeadingMode.USING_WAYPOINT_HEADING;
+
+    Inequality[] modal_status = {Inequality.LESS_THAN, Inequality.LESS_THAN, Inequality.LESS_THAN, Inequality.LESS_THAN};
+    HashMap<String, Integer> result_filter = new HashMap<>(4);
 
     @Override
     protected void onResume(){
@@ -177,12 +184,13 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         request = (Button) findViewById(R.id.request);
         edit = (Button) findViewById(R.id.edit);
         start = (Button) findViewById(R.id.start);
+        edit_umbral = (Button) findViewById(R.id.params);
 
         locate.setOnClickListener(this);
         request.setOnClickListener(this);
         edit.setOnClickListener(this);
         start.setOnClickListener(this);
-
+        edit_umbral.setOnClickListener(this);
     }
 
     @Override
@@ -223,6 +231,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         setupGimbal();
         setupCamera();
         initializeMission();
+
+        result_filter.put("0", 0);
+        result_filter.put("1", 0);
+        result_filter.put("2", 0);
+        result_filter.put("3", 0);
+        result_filter.put("4", 0);
     }
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -596,6 +610,10 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 stopWaypointMission();
                 break;
             }
+            case R.id.params: {
+                showSettingDialog();
+                break;
+            }
             default:
                 break;
         }
@@ -626,7 +644,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
         RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
-        Call<Mission> call = routesAPI.process();
+        Call<Mission> call = routesAPI.process(result_filter);
         call.enqueue(new Callback<Mission>() {
             @Override
             public void onResponse(Call<Mission> call, Response<Mission> response) {
@@ -637,15 +655,18 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     public void run() {
                         gMap.clear();
                     }
-
                 });
                 waypointList.clear();
                 updateDroneLocation();
-                for (LatLng p : mission.getWaypoints()) {
-                    addPoint(p);
+                if (mission.getWaypoints().size() == 0) {
+                    setResultToToast("No se detectaron puntos de riesgo");
+                } else {
+                    for (LatLng p : mission.getWaypoints()) {
+                        addPoint(p);
+                    }
+                    configWayPointMission();
+                    uploadWayPointMission();
                 }
-                configWayPointMission();
-                uploadWayPointMission();
             }
 
             @Override
@@ -791,85 +812,84 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         }
     }
 
+    enum Inequality {
+        LESS_THAN,
+        GREATER_THAN
+    }
+
+    private Inequality switch_inequality(Inequality i) {
+        if (i == Inequality.LESS_THAN) {
+            return Inequality.GREATER_THAN;
+        } else if (i == Inequality.GREATER_THAN) {
+            return Inequality.LESS_THAN;
+        }
+        return i;
+    }
+
+    private String print_inequality(Inequality i) {
+        if (i == Inequality.LESS_THAN) {
+            return "Menor que";
+        } else if (i == Inequality.GREATER_THAN) {
+            return "Mayor que";
+        }
+        return "";
+    }
+
+    private int get_sign(Inequality i) {
+        if (i == Inequality.LESS_THAN) {
+            return -1;
+        } else if (i == Inequality.GREATER_THAN) {
+            return 1;
+        }
+        return 0;
+    }
+
     private void showSettingDialog(){
-        LinearLayout wayPointSettings = (LinearLayout)getLayoutInflater().inflate(R.layout.dialog_waypointsetting, null);
+        ScrollView wayPointSettings = (ScrollView) getLayoutInflater().inflate(R.layout.dialog_waypointsetting, null);
 
-        final TextView wpAltitude_TV = (TextView) wayPointSettings.findViewById(R.id.altitude);
-        RadioGroup speed_RG = (RadioGroup) wayPointSettings.findViewById(R.id.speed);
-        RadioGroup actionAfterFinished_RG = (RadioGroup) wayPointSettings.findViewById(R.id.actionAfterFinished);
-        RadioGroup heading_RG = (RadioGroup) wayPointSettings.findViewById(R.id.heading);
+        Button[] buttons = {
+                (Button) wayPointSettings.findViewById(R.id.button_class1),
+                (Button) wayPointSettings.findViewById(R.id.button_class2),
+                (Button) wayPointSettings.findViewById(R.id.button_class3),
+                (Button) wayPointSettings.findViewById(R.id.button_class4),
+        };
 
-        speed_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener(){
+        EditText[] inputs = {
+                (EditText) wayPointSettings.findViewById(R.id.editTextNumber_class1),
+                (EditText) wayPointSettings.findViewById(R.id.editTextNumber_class2),
+                (EditText) wayPointSettings.findViewById(R.id.editTextNumber_class3),
+                (EditText) wayPointSettings.findViewById(R.id.editTextNumber_class4),
+        };
 
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                if (checkedId == R.id.lowSpeed){
-                    mSpeed = 3.0f;
-                } else if (checkedId == R.id.MidSpeed){
-                    mSpeed = 5.0f;
-                } else if (checkedId == R.id.HighSpeed){
-                    mSpeed = 10.0f;
+        for (int i = 0; i < 4; ++i) {
+            final Button btn = buttons[i];
+            int finalI = i;
+            btn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    modal_status[finalI] = switch_inequality(modal_status[finalI]);
+                    btn.setText(print_inequality(modal_status[finalI]));
                 }
-            }
-
-        });
-
-        actionAfterFinished_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                Log.d(TAG, "Select finish action");
-                if (checkedId == R.id.finishNone){
-                    mFinishedAction = WaypointMissionFinishedAction.NO_ACTION;
-                } else if (checkedId == R.id.finishGoHome){
-                    mFinishedAction = WaypointMissionFinishedAction.GO_HOME;
-                } else if (checkedId == R.id.finishAutoLanding){
-                    mFinishedAction = WaypointMissionFinishedAction.AUTO_LAND;
-                } else if (checkedId == R.id.finishToFirst){
-                    mFinishedAction = WaypointMissionFinishedAction.GO_FIRST_WAYPOINT;
-                }
-            }
-        });
-
-        heading_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-
-            @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                Log.d(TAG, "Select heading");
-
-                if (checkedId == R.id.headingNext) {
-                    mHeadingMode = WaypointMissionHeadingMode.AUTO;
-                } else if (checkedId == R.id.headingInitDirec) {
-                    mHeadingMode = WaypointMissionHeadingMode.USING_INITIAL_DIRECTION;
-                } else if (checkedId == R.id.headingRC) {
-                    mHeadingMode = WaypointMissionHeadingMode.CONTROL_BY_REMOTE_CONTROLLER;
-                } else if (checkedId == R.id.headingWP) {
-                    mHeadingMode = WaypointMissionHeadingMode.USING_WAYPOINT_HEADING;
-                }
-            }
-        });
+            });
+        }
 
         new AlertDialog.Builder(this)
                 .setTitle("")
                 .setView(wayPointSettings)
-                .setPositiveButton("Finish",new DialogInterface.OnClickListener(){
+                .setPositiveButton("Listo",new DialogInterface.OnClickListener(){
                     public void onClick(DialogInterface dialog, int id) {
-
-                        String altitudeString = wpAltitude_TV.getText().toString();
-                        altitude = Integer.parseInt(nulltoIntegerDefalt(altitudeString));
-                        Log.e(TAG,"altitude "+altitude);
-                        Log.e(TAG,"speed "+mSpeed);
-                        Log.e(TAG, "mFinishedAction "+mFinishedAction);
-                        Log.e(TAG, "mHeadingMode "+mHeadingMode);
-                        configWayPointMission();
+                        for (int i = 0; i < 4; ++i) {
+                            int value = Integer.parseInt(inputs[i].getText().toString());
+                            int sign = get_sign(modal_status[i]);
+                            value *= sign;
+                            result_filter.put(String.valueOf(i + 1), value);
+                        }
                     }
-
                 })
-                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                .setNegativeButton("Cancelar", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                     }
-
                 })
                 .create()
                 .show();

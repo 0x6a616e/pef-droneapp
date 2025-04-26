@@ -2,9 +2,14 @@ package com.dji.GSDemo.GoogleMap;
 
 import com.google.android.gms.maps.model.LatLng;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import okhttp3.MultipartBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.FieldMap;
+import retrofit2.http.FormUrlEncoded;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -18,8 +23,8 @@ public interface RoutesAPI {
     @GET("missions/get")
     Call<Mission> getMission();
 
-    @GET("missions/process")
-    Call<Mission> process();
+    @POST("missions/process")
+    Call<Mission> process(@Body Map<String, Integer> data);
 
     @POST("missions/edit")
     Call<Mission> postMission(@Body Mission mission);

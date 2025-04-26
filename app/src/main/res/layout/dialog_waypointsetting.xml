@@ -1,176 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:layout_marginBottom="10dp"
-    android:layout_marginTop="10dp"
-    android:layout_marginLeft="10dp"
-    android:layout_marginRight="10dp">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Waypoint Configuration"
-        android:layout_gravity="center_horizontal">
-    </TextView>
-
-    <LinearLayout
+    android:layout_height="match_parent">
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
         android:layout_marginBottom="10dp"
         android:layout_marginTop="10dp"
         android:layout_marginLeft="10dp"
         android:layout_marginRight="10dp">
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Altitude:">
+            android:text="Configuración de filtrado"
+            android:layout_gravity="center_horizontal">
         </TextView>
-        <EditText
-            android:id="@+id/altitude"
-            android:layout_width="40dp"
-            android:layout_height="wrap_content">
-        </EditText>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="10dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Speed:">
-        </TextView>
-        <RadioGroup
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:id="@+id/speed"
-            android:layout_gravity="center_horizontal">
-            <RadioButton
-                android:id="@+id/lowSpeed"
+            android:layout_marginBottom="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp">
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Low"/>
-            <RadioButton
-                android:id="@+id/MidSpeed"
+                android:text="Porcentaje de Agua:">
+            </TextView>
+            <Button
+                android:id="@+id/button_class1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Mid"/>
-            <RadioButton
-                android:id="@+id/HighSpeed"
-                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:text="Menor que" />
+            <EditText
+                android:id="@+id/editTextNumber_class1"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
-                android:text="High"/>
-        </RadioGroup>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="10dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Action After Finished:"/>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal" >
-        <RadioGroup
-            android:layout_width="wrap_content"
+                android:ems="10"
+                android:inputType="number"
+                android:text="0" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:id="@+id/actionAfterFinished"
-            android:layout_gravity="center_horizontal">
-            <RadioButton
-                android:id="@+id/finishNone"
+            android:layout_marginBottom="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp">
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="None"/>
-            <RadioButton
-                android:id="@+id/finishGoHome"
+                android:text="Porcentaje de Suelo Expuesto:">
+            </TextView>
+            <Button
+                android:id="@+id/button_class2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="GoHome"/>
-            <RadioButton
-                android:id="@+id/finishAutoLanding"
-                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:text="Menor que" />
+            <EditText
+                android:id="@+id/editTextNumber_class2"
+                android:layout_width="50dp"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="AutoLand"/>
-            <RadioButton
-                android:id="@+id/finishToFirst"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="BackTo 1st"/>
-        </RadioGroup>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="10dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginLeft="10dp"
-        android:layout_marginRight="10dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Heading:"/>
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal" >
-        <RadioGroup
-            android:layout_width="wrap_content"
+                android:ems="10"
+                android:inputType="number"
+                android:text="0" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:id="@+id/heading"
-            android:layout_gravity="center_horizontal">
-            <RadioButton
-                android:id="@+id/headingNext"
+            android:layout_marginBottom="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp">
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="Auto"/>
-            <RadioButton
-                android:id="@+id/headingInitDirec"
+                android:text="Porcentaje de Vegetación Seca:">
+            </TextView>
+            <Button
+                android:id="@+id/button_class3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="Initial"/>
-            <RadioButton
-                android:id="@+id/headingRC"
+                android:layout_weight="1"
+                android:text="Menor que" />
+            <EditText
+                android:id="@+id/editTextNumber_class3"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:inputType="number"
+                android:text="0" />
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp">
+            <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="RC Control"/>
-            <RadioButton
-                android:id="@+id/headingWP"
+                android:text="Porcentaje de Vegetación Verde:">
+            </TextView>
+            <Button
+                android:id="@+id/button_class4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="5pt"
-                android:text="Use Waypoint"/>
-        </RadioGroup>
+                android:layout_weight="1"
+                android:text="Menor que" />
+            <EditText
+                android:id="@+id/editTextNumber_class4"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:inputType="number"
+                android:text="0" />
+        </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</ScrollView>
