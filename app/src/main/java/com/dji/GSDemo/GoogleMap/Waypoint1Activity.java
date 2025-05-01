@@ -457,7 +457,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 @Override
                 public void onSuccess(String s) {
                     --pending;
-                    setResultToToast("Pending: " + pending);
+                    setResultToToast("Pending (s): " + pending);
                     mFiles.add(file);
                     if (pending <= 0) {
                         Handler handler = new Handler(Looper.getMainLooper());
@@ -473,7 +473,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 @Override
                 public void onFailure(DJIError djiError) {
                     --pending;
-                    setResultToToast("Pending: " + pending);
+                    setResultToToast("Pending (e): " + pending);
                     if (pending <= 0) {
                         Handler handler = new Handler(Looper.getMainLooper());
                         handler.post(new Runnable() {
@@ -873,13 +873,27 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             });
         }
 
+        RadioGroup altitudeRG = (RadioGroup) wayPointSettings.findViewById(R.id.altitude);
+        altitudeRG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup radioGroup, int i) {
+                if (i == R.id.lowAltitude) {
+                    altitude = 10f;
+                } else if (i == R.id.midAltitude) {
+                    altitude = 15f;
+                } else if (i == R.id.highAltitude) {
+                    altitude = 20f;
+                }
+            }
+        });
+
         new AlertDialog.Builder(this)
                 .setTitle("")
                 .setView(wayPointSettings)
                 .setPositiveButton("Listo",new DialogInterface.OnClickListener(){
                     public void onClick(DialogInterface dialog, int id) {
                         for (int i = 0; i < 4; ++i) {
-                            int value = Integer.parseInt(inputs[i].getText().toString());
+                            int value = Integer.parseInt("0" + inputs[i].getText().toString());
                             int sign = get_sign(modal_status[i]);
                             value *= sign;
                             result_filter.put(String.valueOf(i + 1), value);

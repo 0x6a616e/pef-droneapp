@@ -54,16 +54,6 @@ public class UploadWorker extends Worker {
                 throw new RuntimeException(e);
             }
             file.delete();
-            // call.enqueue(new Callback<Void>() {
-            //     @Override
-            //     public void onResponse(Call<Void> call, Response<Void> response) {
-            //         file.delete();
-            //     }
-
-            //     @Override
-            //     public void onFailure(Call<Void> call, Throwable t) {
-            //     }
-            // });
         }
         return Result.success();
     }
