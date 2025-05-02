@@ -102,6 +102,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     protected static final String TAG = "GSDemoActivity";
 
     protected static final String BASE_URL = "https://api.pef.estupideznatural.tech/";
+    protected static final String PROGRESS = "PROGRESS";
 
     private GoogleMap gMap;
 
@@ -419,9 +420,14 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         WorkManager.getInstance(this).enqueue(uploadWorkRequest);
         WorkManager.getInstance(this).getWorkInfoByIdLiveData(uploadWorkRequest.getId())
                 .observe(this, workInfo -> {
-                    if (workInfo.getState() == WorkInfo.State.SUCCEEDED) {
-                        deleteFiles(origFiles);
-                        processMission();
+                    if (workInfo != null) {
+                        Data progress = workInfo.getProgress();
+                        int percentage = progress.getInt(PROGRESS, 100);
+                        setResultToToast("Porcentaje de subida: " + percentage);
+                        if (workInfo.getState() == WorkInfo.State.SUCCEEDED) {
+                            deleteFiles(origFiles);
+                            processMission();
+                        }
                     }
                 });
     }
@@ -457,7 +463,9 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 @Override
                 public void onSuccess(String s) {
                     --pending;
-                    setResultToToast("Pending (s): " + pending);
+                    if (pending % 10 == 0) {
+                        setResultToToast("Pending (s): " + pending);
+                    }
                     mFiles.add(file);
                     if (pending <= 0) {
                         Handler handler = new Handler(Looper.getMainLooper());
@@ -473,7 +481,9 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 @Override
                 public void onFailure(DJIError djiError) {
                     --pending;
-                    setResultToToast("Pending (e): " + pending);
+                    if (pending % 10 == 0) {
+                        setResultToToast("Pending (e): " + pending);
+                    }
                     if (pending <= 0) {
                         Handler handler = new Handler(Looper.getMainLooper());
                         handler.post(new Runnable() {

@@ -1,10 +1,14 @@
 package com.dji.GSDemo.GoogleMap;
 
 import static com.dji.GSDemo.GoogleMap.Waypoint1Activity.BASE_URL;
+import static com.dji.GSDemo.GoogleMap.Waypoint1Activity.PROGRESS;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.annotation.NonNull;
+import androidx.work.Data;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
@@ -30,8 +34,10 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class UploadWorker extends Worker {
     public UploadWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
+        setProgressAsync(new Data.Builder().putInt(PROGRESS, 0).build());
     }
 
+    @NonNull
     @Override
     public Result doWork() {
         String[] filenames = getInputData().getStringArray("FILENAMES");
@@ -44,6 +50,7 @@ public class UploadWorker extends Worker {
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
         RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        int done = 0;
         for (String filename : filenames) {
             File file = new File(dir, filename);
             MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), RequestBody.create(MediaType.parse("image/*"), file));
@@ -51,8 +58,8 @@ public class UploadWorker extends Worker {
             try {
                 Response<Void> response = call.execute();
             } catch (IOException e) {
-                throw new RuntimeException(e);
             }
+            setProgressAsync(new Data.Builder().putInt(PROGRESS, ++done * 100 / filenames.length).build());
             file.delete();
         }
         return Result.success();
