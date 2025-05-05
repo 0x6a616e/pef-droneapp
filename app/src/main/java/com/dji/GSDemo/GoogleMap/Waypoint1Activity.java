@@ -27,6 +27,7 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -409,6 +410,15 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
     private void processFiles(List<MediaFile> files, List<MediaFile> origFiles) {
+        LinearLayout progressBarDialog = (LinearLayout) getLayoutInflater().inflate(R.layout.progress_bar, null);
+        ProgressBar progressBar = progressBarDialog.findViewById(R.id.progressBar2);
+        TextView progressBarTitle = progressBarDialog.findViewById(R.id.textView3);
+        progressBarTitle.setText("Subiendo archivos al servidor:");
+        AlertDialog alertDialog = new AlertDialog.Builder(this)
+                .setTitle("")
+                .setView(progressBarDialog)
+                .create();
+        alertDialog.show();
         File dir = getFilesDir();
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
@@ -424,9 +434,11 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 @Override
                 public void onResponse(Call<Void> call, Response<Void> response) {
                     int percentage = ++done * 100 / files.size();
-                    setResultToToast("Porcentaje de subida: " + percentage + "%");
+                    progressBar.setProgress(percentage);
+                    // setResultToToast("Porcentaje de subida: " + percentage + "%");
                     file.delete();
                     if (percentage == 100) {
+                        alertDialog.cancel();
                         deleteFiles(origFiles);
                         processMission();
                     }
@@ -475,13 +487,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     }
                     mFiles.add(file);
                     if (pending <= 0) {
-                        Handler handler = new Handler(Looper.getMainLooper());
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                processFiles(mFiles, files);
-                            }
-                        });
+                        processFiles(mFiles, files);
                     }
                 }
 
@@ -492,13 +498,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                         setResultToToast("Pending (e): " + pending);
                     }
                     if (pending <= 0) {
-                        Handler handler = new Handler(Looper.getMainLooper());
-                        handler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                processFiles(mFiles, files);
-                            }
-                        });
+                        processFiles(mFiles, files);
                     }
                 }
             });
