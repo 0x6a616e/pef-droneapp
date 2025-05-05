@@ -32,6 +32,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class UploadWorker extends Worker {
+    private int done;
     public UploadWorker(@NonNull Context context, @NonNull WorkerParameters params) {
         super(context, params);
         setProgressAsync(new Data.Builder().putInt(PROGRESS, 0).build());
@@ -50,17 +51,26 @@ public class UploadWorker extends Worker {
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
         RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
-        int done = 0;
+        done = 0;
         for (String filename : filenames) {
             File file = new File(dir, filename);
             MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), RequestBody.create(MediaType.parse("image/*"), file));
             Call<Void> call = routesAPI.uploadFile(filePart);
-            try {
-                Response<Void> response = call.execute();
-            } catch (IOException e) {
-            }
-            setProgressAsync(new Data.Builder().putInt(PROGRESS, ++done * 100 / filenames.length).build());
-            file.delete();
+            call.enqueue(new Callback<Void>() {
+                @Override
+                public void onResponse(Call<Void> call, Response<Void> response) {
+                    setProgressAsync(new Data.Builder().putInt(PROGRESS, ++done * 100 / filenames.length).build());
+                    file.delete();
+                }
+
+                @Override
+                public void onFailure(Call<Void> call, Throwable t) {
+                }
+            });
+        }
+        try {
+            wait();
+        } catch (InterruptedException e) {
         }
         return Result.success();
     }

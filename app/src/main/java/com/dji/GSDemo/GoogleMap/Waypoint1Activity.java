@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 import androidx.work.Data;
+import androidx.work.ListenableWorker;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
@@ -139,6 +140,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     Inequality[] modal_status = {Inequality.LESS_THAN, Inequality.LESS_THAN, Inequality.LESS_THAN, Inequality.LESS_THAN};
     HashMap<String, Integer> result_filter = new HashMap<>(4);
+
+    private int done;
 
     @Override
     protected void onResume(){
@@ -406,30 +409,34 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
     private void processFiles(List<MediaFile> files, List<MediaFile> origFiles) {
-        String[] filenames = new String[ files.size() ];
-        for (int i = 0; i < files.size(); ++i) {
-            filenames[i] = files.get(i).getFileName();
-        }
-        WorkRequest uploadWorkRequest = new OneTimeWorkRequest.Builder(UploadWorker.class)
-                .setInputData(
-                        new Data.Builder()
-                                .putStringArray("FILENAMES", filenames)
-                                .build()
-                )
+        File dir = getFilesDir();
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
                 .build();
-        WorkManager.getInstance(this).enqueue(uploadWorkRequest);
-        WorkManager.getInstance(this).getWorkInfoByIdLiveData(uploadWorkRequest.getId())
-                .observe(this, workInfo -> {
-                    if (workInfo != null) {
-                        Data progress = workInfo.getProgress();
-                        int percentage = progress.getInt(PROGRESS, 100);
-                        setResultToToast("Porcentaje de subida: " + percentage);
-                        if (workInfo.getState() == WorkInfo.State.SUCCEEDED) {
-                            deleteFiles(origFiles);
-                            processMission();
-                        }
+        RoutesAPI routesAPI = retrofit.create(RoutesAPI.class);
+        done = 0;
+        for (MediaFile mediaFile : files) {
+            File file = new File(dir, mediaFile.getFileName());
+            MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), RequestBody.create(MediaType.parse("image/*"), file));
+            Call<Void> call = routesAPI.uploadFile(filePart);
+            call.enqueue(new Callback<Void>() {
+                @Override
+                public void onResponse(Call<Void> call, Response<Void> response) {
+                    int percentage = ++done * 100 / files.size();
+                    setResultToToast("Porcentaje de subida: " + percentage + "%");
+                    file.delete();
+                    if (percentage == 100) {
+                        deleteFiles(origFiles);
+                        processMission();
                     }
-                });
+                }
+
+                @Override
+                public void onFailure(Call<Void> call, Throwable t) {
+                }
+            });
+        }
     }
 
     public void onFileListStateChange(MediaManager.FileListState state) {
