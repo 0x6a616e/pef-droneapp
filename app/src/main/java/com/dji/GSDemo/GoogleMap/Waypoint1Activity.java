@@ -413,7 +413,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         LinearLayout progressBarDialog = (LinearLayout) getLayoutInflater().inflate(R.layout.progress_bar, null);
         ProgressBar progressBar = progressBarDialog.findViewById(R.id.progressBar2);
         TextView progressBarTitle = progressBarDialog.findViewById(R.id.textView3);
-        progressBarTitle.setText("Subiendo archivos al servidor:");
+        progressBarTitle.setText("Subiendo imágenes al servidor");
         AlertDialog alertDialog = new AlertDialog.Builder(this)
                 .setTitle("")
                 .setView(progressBarDialog)
@@ -437,7 +437,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     progressBar.setProgress(percentage);
                     // setResultToToast("Porcentaje de subida: " + percentage + "%");
                     file.delete();
-                    if (percentage == 100) {
+                    if (percentage >= 100) {
                         alertDialog.cancel();
                         deleteFiles(origFiles);
                         processMission();
@@ -456,11 +456,22 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             return;
         }
         List<MediaFile> files = mMediaManager.getSDCardFileListSnapshot();
-        assert files != null;
+        if (files == null || files.size() == 0) {
+            return;
+        }
         setResultToToast("Files: " + files.size());
         mFiles.clear();
         File dir = getFilesDir();
-        pending = files.size();
+        done = 0;
+        LinearLayout progressBarDialog = (LinearLayout) getLayoutInflater().inflate(R.layout.progress_bar, null);
+        ProgressBar progressBar = progressBarDialog.findViewById(R.id.progressBar2);
+        TextView progressBarTitle = progressBarDialog.findViewById(R.id.textView3);
+        progressBarTitle.setText("Descargando imágenes del dron");
+        AlertDialog alertDialog = new AlertDialog.Builder(this)
+                .setTitle("")
+                .setView(progressBarDialog)
+                .create();
+        alertDialog.show();
         for (MediaFile file : files) {
             file.fetchFileData(dir, null, new DownloadListener<String>() {
                 @Override
@@ -481,23 +492,21 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
                 @Override
                 public void onSuccess(String s) {
-                    --pending;
-                    if (pending % 10 == 0) {
-                        setResultToToast("Pending (s): " + pending);
-                    }
+                    int percentage = ++done * 100 / files.size();
+                    progressBar.setProgress(percentage);
                     mFiles.add(file);
-                    if (pending <= 0) {
+                    if (percentage >= 100) {
+                        alertDialog.cancel();
                         processFiles(mFiles, files);
                     }
                 }
 
                 @Override
                 public void onFailure(DJIError djiError) {
-                    --pending;
-                    if (pending % 10 == 0) {
-                        setResultToToast("Pending (e): " + pending);
-                    }
-                    if (pending <= 0) {
+                    int percentage = ++done * 100 / files.size();
+                    progressBar.setProgress(percentage);
+                    if (percentage >= 100) {
+                        alertDialog.cancel();
                         processFiles(mFiles, files);
                     }
                 }
