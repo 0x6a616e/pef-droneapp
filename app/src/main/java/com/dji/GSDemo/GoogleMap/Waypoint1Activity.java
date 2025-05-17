@@ -994,7 +994,15 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     setResultToToast("Mission upload successfully!");
                 } else {
                     setResultToToast("Mission upload failed, error: " + error.getDescription() + " retrying...");
-                    getWaypointMissionOperator().retryUploadMission(null);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            gMap.clear();
+                        }
+                    });
+                    waypointList.clear();
+                    updateDroneLocation();
+                    firstTravel = true;
                 }
             }
         });
